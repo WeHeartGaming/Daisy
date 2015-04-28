@@ -28,6 +28,11 @@ ADaisyCharacter::ADaisyCharacter(const class FObjectInitializer& ObjectInitializ
 	ThirdPersonCamera = ObjectInitializer.CreateDefaultSubobject<UCameraComponent>(this, TEXT("ThirdPersonCamera"));
 	ThirdPersonCamera->AttachParent = CameraBoom;
 
+	FirstPersonCamera = ObjectInitializer.CreateDefaultSubobject<UCameraComponent>(this, TEXT("FirstPersonCamera"));
+	FirstPersonCamera->AttachTo(Mesh, "head");
+	FirstPersonCamera->bUsePawnControlRotation = true;
+	FirstPersonCamera->AddLocalOffset(FVector(0.0f, 20.0f, 0.0f));
+
 	isFreelooking = false;
 	isZooming = false;
 
@@ -45,6 +50,8 @@ void ADaisyCharacter::PostInitializeComponents()
 void ADaisyCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	isInFirstPerson = false;
 	
 }
 
@@ -73,6 +80,7 @@ void ADaisyCharacter::SetupPlayerInputComponent(class UInputComponent* InputComp
 	InputComponent->BindAction("Freelook", IE_Released, this, &ADaisyCharacter::OnFreelookStop);
 	InputComponent->BindAction("Zoom", IE_Pressed, this, &ADaisyCharacter::OnZoomStart);
 	InputComponent->BindAction("Zoom", IE_Released, this, &ADaisyCharacter::OnZoomStop);
+	InputComponent->BindAction("ToggleCamera", IE_Pressed, this, &ADaisyCharacter::OnCameraToggle);
 	//InputComponent->BindAction("Crouch", IE_Pressed, this, &ADaisyCharacter::OnCrouchStart);
 	//InputComponent->BindAction("Crouch", IE_Released, this, &ADaisyCharacter::OnCrouchStop);
 }
@@ -167,6 +175,23 @@ void ADaisyCharacter::OnZoomStart()
 void ADaisyCharacter::OnZoomStop()
 {
 	isZooming = false;
+}
+
+void ADaisyCharacter::OnCameraToggle()
+{
+	if (isInFirstPerson)
+	{
+		isInFirstPerson = false;
+		FirstPersonCamera->Deactivate();
+		ThirdPersonCamera->Activate();
+	}
+	else
+	{
+		isInFirstPerson = true;
+		ThirdPersonCamera->Deactivate();
+		FirstPersonCamera->Activate();
+		
+	}
 }
 
 void ADaisyCharacter::ServerSetSprinting_Implementation(bool newSprinting)

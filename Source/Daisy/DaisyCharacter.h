@@ -28,6 +28,10 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Camera")
 	UCameraComponent* ThirdPersonCamera;
 
+	UPROPERTY(VisibleAnywhere, Category = "Camera")
+	UCameraComponent* FirstPersonCamera;
+	bool isInFirstPerson;
+
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
 	float sprintModifier;
 
@@ -46,6 +50,7 @@ public:
 	void OnFreelookStop();
 	void OnZoomStart();
 	void OnZoomStop();
+	void OnCameraToggle();
 	
 	float GetSprintModifier() const;
 
