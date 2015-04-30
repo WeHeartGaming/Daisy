@@ -10,7 +10,7 @@ class DAISY_API ADaisyCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
-	virtual void PostInitializeComponents() override;
+		virtual void PostInitializeComponents() override;
 
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -23,17 +23,17 @@ class DAISY_API ADaisyCharacter : public ACharacter
 
 private:
 	UPROPERTY(VisibleAnywhere, Category = "Camera")
-	USpringArmComponent* CameraBoom;
+		USpringArmComponent* CameraBoom;
 
 	UPROPERTY(VisibleAnywhere, Category = "Camera")
-	UCameraComponent* ThirdPersonCamera;
+		UCameraComponent* ThirdPersonCamera;
 
 	UPROPERTY(VisibleAnywhere, Category = "Camera")
-	UCameraComponent* FirstPersonCamera;
+		UCameraComponent* FirstPersonCamera;
 	bool isInFirstPerson;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Movement")
-	float sprintModifier;
+		float sprintModifier;
 
 	FRotator previousRotation;
 
@@ -44,21 +44,38 @@ public:
 	/* MOVEMENT */
 	virtual void MoveForward(float Val);
 	virtual void MoveRight(float Val);
+	void OnJumpStart();
+	void OnJumpStop();
+	void OnCrouchToggle();
 	void OnSprintStart();
 	void OnSprintStop();
+
 	void OnFreelookStart();
 	void OnFreelookStop();
 	void OnZoomStart();
 	void OnZoomStop();
 	void OnCameraToggle();
-	
+
 	float GetSprintModifier() const;
 
 	UPROPERTY(Transient, Replicated)
-	bool bWantToSprint;
+		bool bWantToSprint;
 
 	UFUNCTION(BlueprintCallable, Category = "Movement")
-	bool IsSprinting() const;
+		bool IsSprinting() const;
+
+	UPROPERTY(Transient, Replicated)
+		bool bIsJumping;
+
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+		bool IsInitiatedJump() const;
+
+	void SetIsJumping(bool newJumping);
+
+	UFUNCTION(Reliable, Server, WithValidation)
+		void ServerSetIsJumping(bool newJumping);
+
+	void OnLanded(const FHitResult& hit) override;
 
 	bool isFreelooking;
 	bool isZooming;
@@ -67,26 +84,26 @@ public:
 	void SetSprinting(bool newSprinting);
 	// Server
 	UFUNCTION(Server, Reliable, WithValidation)
-	void ServerSetSprinting(bool newSprinting);
+		void ServerSetSprinting(bool newSprinting);
 
 	/* Player vars */
 	UFUNCTION(BlueprintCallable, Category = "PlayerVars")
-	float GetHealth() const;
+		float GetHealth() const;
 
 	UFUNCTION(BlueprintCallable, Category = "PlayerVars")
-	float GetMaxHealth() const;
+		float GetMaxHealth() const;
 
 	UFUNCTION(BlueprintCallable, Category = "PlayerVars")
-	bool IsAlive() const;
+		bool IsAlive() const;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Camera")
-	FVector boomSocketOffset;
+		FVector boomSocketOffset;
 
 	UPROPERTY(EditDefaultsOnly, Category = "Camera")
-	FVector boomTargetOffset;
+		FVector boomTargetOffset;
 
 	UPROPERTY(EditDefaultsOnly, Category = "PlayerVars", Replicated)
-	float health;
+		float health;
 
 	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, class AActor* DamageCauser) override;
 };

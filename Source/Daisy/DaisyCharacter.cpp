@@ -9,7 +9,7 @@
 ADaisyCharacter::ADaisyCharacter(const class FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UDCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
 	GetCapsuleComponent()->InitCapsuleSize(42.0f, 96.0f);
@@ -18,6 +18,9 @@ ADaisyCharacter::ADaisyCharacter(const class FObjectInitializer& ObjectInitializ
 	MoveComponent->GravityScale = 1.5f;
 	MoveComponent->bCanWalkOffLedgesWhenCrouching = true;
 	MoveComponent->MaxWalkSpeedCrouched = 200.0f;
+	MoveComponent->JumpZVelocity = 620.0f;
+
+	MoveComponent->GetNavAgentPropertiesRef().bCanCrouch = true;
 
 	CameraBoom = ObjectInitializer.CreateDefaultSubobject<USpringArmComponent>(this, TEXT("CameraBoom"));
 	CameraBoom->bUsePawnControlRotation = true;
@@ -52,13 +55,13 @@ void ADaisyCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	isInFirstPerson = false;
-	
+
 }
 
 // Called every frame
-void ADaisyCharacter::Tick( float DeltaTime )
+void ADaisyCharacter::Tick(float DeltaTime)
 {
-	Super::Tick( DeltaTime );
+	Super::Tick(DeltaTime);
 
 	if (bWantToSprint && !IsSprinting())
 		SetSprinting(true);
@@ -76,6 +79,12 @@ void ADaisyCharacter::SetupPlayerInputComponent(class UInputComponent* InputComp
 
 	InputComponent->BindAction("Sprint", IE_Pressed, this, &ADaisyCharacter::OnSprintStart);
 	InputComponent->BindAction("Sprint", IE_Released, this, &ADaisyCharacter::OnSprintStop);
+
+	InputComponent->BindAction("Jump", IE_Pressed, this, &ADaisyCharacter::OnJumpStart);
+	InputComponent->BindAction("Jump", IE_Released, this, &ADaisyCharacter::OnJumpStop);
+
+	InputComponent->BindAction("Crouch", IE_Released, this, &ADaisyCharacter::OnCrouchToggle);
+
 	InputComponent->BindAction("Freelook", IE_Pressed, this, &ADaisyCharacter::OnFreelookStart);
 	InputComponent->BindAction("Freelook", IE_Released, this, &ADaisyCharacter::OnFreelookStop);
 	InputComponent->BindAction("Zoom", IE_Pressed, this, &ADaisyCharacter::OnZoomStart);
@@ -85,7 +94,7 @@ void ADaisyCharacter::SetupPlayerInputComponent(class UInputComponent* InputComp
 	//InputComponent->BindAction("Crouch", IE_Released, this, &ADaisyCharacter::OnCrouchStop);
 }
 
-void ADaisyCharacter::MoveForward(float Val) 
+void ADaisyCharacter::MoveForward(float Val)
 {
 	if (Controller && Val != 0.0f)
 	{
@@ -148,6 +157,68 @@ void ADaisyCharacter::OnSprintStop()
 	SetSprinting(false);
 }
 
+void ADaisyCharacter::OnJumpStart()
+{
+	bPressedJump = true;
+	SetIsJumping(true);
+}
+
+void ADaisyCharacter::OnJumpStop()
+{
+	bPressedJump = false;
+}
+
+bool ADaisyCharacter::IsInitiatedJump() const
+{
+	return bIsJumping;
+}
+
+void ADaisyCharacter::SetIsJumping(bool newJumping)
+{
+	if (bIsCrouched && newJumping)
+	{
+		UnCrouch();
+	}
+	else
+	{
+		bIsJumping = newJumping;
+	}
+
+	if (Role < ROLE_Authority)
+	{
+		ServerSetIsJumping(newJumping);
+	}
+}
+
+void ADaisyCharacter::OnLanded(const FHitResult& hit)
+{
+	Super::OnLanded(hit);
+
+	SetIsJumping(false);
+}
+
+void ADaisyCharacter::ServerSetIsJumping_Implementation(bool newJumping)
+{
+	SetIsJumping(newJumping);
+}
+
+bool ADaisyCharacter::ServerSetIsJumping_Validate(bool newJumping)
+{
+	return true;
+}
+
+void ADaisyCharacter::OnCrouchToggle()
+{
+	if (CanCrouch())
+	{
+		Crouch();
+	}
+	else
+	{
+		UnCrouch();
+	}
+}
+
 void ADaisyCharacter::OnFreelookStart()
 {
 	isFreelooking = true;
@@ -190,7 +261,7 @@ void ADaisyCharacter::OnCameraToggle()
 		isInFirstPerson = true;
 		ThirdPersonCamera->Deactivate();
 		FirstPersonCamera->Activate();
-		
+
 	}
 }
 
@@ -230,10 +301,10 @@ float ADaisyCharacter::GetSprintModifier() const
 void ADaisyCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
-	
+
 	DOREPLIFETIME_CONDITION(ADaisyCharacter, bWantToSprint, COND_SkipOwner);
 
-	DOREPLIFETIME(ADaisyCharacter, health);	
+	DOREPLIFETIME(ADaisyCharacter, health);
 }
 
 bool ADaisyCharacter::IsAlive() const
@@ -253,7 +324,7 @@ float ADaisyCharacter::TakeDamage(float Damage, struct FDamageEvent const& Damag
 
 		if (health <= 0)
 		{
-				// DEAD
+			// DEAD
 		}
 		else
 		{
